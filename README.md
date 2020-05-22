@@ -17,4 +17,6 @@ The following D3 charts were used
 Open Terminal and run python main.py  
 This will open up a server on localhost:5050
 
+## Screenshot
+<img src="static/img/dashboard-screenshot.png">
 &copy; Pavan G & Abhishek K
