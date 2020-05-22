@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Covid-19 Dashboard</title>
+    <link rel = "icon" href ="{{ url_for ('static', filename='img/sbuicon.png') }}" type = "image/x-icon">
+    <link rel="stylesheet" type="text/css" href="{{ url_for ('static', filename='lib/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for ('static', filename='lib/css/dc.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for ('static', filename='lib/css/keen-dashboards.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for ('static', filename='lib/css/d3.slider.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for ('static', filename='lib/css/radar-chart.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for ('static', filename='css/style.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for ('static', filename='lib/css/time_series.css') }}">
+    <script src="https://d3js.org/d3.v3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.9.1/underscore.js"></script>
+    <style>
+
+
+        /******************************************
+        * Metric Modal Chart (Views, Downloads, Citations)
+        ********************************************/
+
+        /* When there is no data ...*/
+
+        #metric-modal .metric-chart text {
+            fill: #565656;
+            font-size: 9px;
+            font-family: Helvetica, Arial, "sans serif";
+        }
+
+        #metric-modal .metric-chart text.no-data {
+            font-size: 16px;
+            font-weight: 100;
+            fill:#d0d0d0;
+        }
+
+        #metric-modal .metric-chart rect.no-data {
+            fill: #f5f5f5;
+        }
+
+        /* When there is data ...*/
+
+        /* CB: padding to display better on bl.ocks.org */
+        #metric-modal {
+            padding: 10px;
+        }
+
+        #metric-modal .metric-chart rect.plot-background{
+            fill: white;
+        }
+
+        #metric-modal .metric-chart path.line {
+            fill: none;
+            stroke: #00AA8D; /* default, changed in each theme */
+            stroke-width: 1.5px;
+            clip-path: url(#clip);
+        }
+
+        #metric-modal .metric-chart path.area {
+            fill: #00AA8D; /* CB default, changed in each theme */
+            opacity: 0.6;
+            clip-path: url(#clip);
+        }
+
+        #metric-modal .metric-chart .axis {
+            shape-rendering: crispEdges;
+        }
+
+        #metric-modal .metric-chart .x.axis .domain{
+            display:none;
+        }
+
+        #metric-modal .metric-chart .x.axis line {
+            stroke: white;
+            opacity: 0.4;
+        }
+
+        #metric-modal .metric-chart .context .x.axis line {
+            display: none;
+        }
+
+        #metric-modal .metric-chart .y.axis .domain{
+            display: none;
+        }
+
+        #metric-modal .metric-chart .y.axis.title{
+            font-size: 13px;
+            font-weight: 100;
+        }
+
+        #metric-modal .metric-chart .y.axis line {
+            stroke: #565656;
+            stroke-dasharray: 2,2;
+            stroke-opacity: 0.3;
+        }
+
+        #metric-modal .metric-chart .brush .extent {
+          fill-opacity: .07;
+          shape-rendering: crispEdges;
+          clip-path: url(#clip);
+        }
+
+        #metric-modal .metric-chart rect.pane {
+            cursor: move;
+            fill: none;
+            pointer-events: all;
+        }
+        /* brush handles  */
+        #metric-modal .metric-chart .resize .handle {
+            fill: #555;
+        }
+
+        #metric-modal .metric-chart .resize .handle-mini {
+            fill: white;
+            stroke-width: 1px;
+            stroke: #555;
+        }
+
+        #metric-modal .metric-chart .scale_button {
+            cursor: pointer;
+        }
+
+        #metric-modal .metric-chart .scale_button rect {
+            fill: #eaeaea;
+        }
+        #metric-modal .metric-chart .scale_button:hover text {
+            fill: #417DD6;
+            transition: all 0.1s cubic-bezier(.25,.8,.25,1);
+        }
+
+        #metric-modal .metric-chart text#displayDates  {
+            font-weight: bold;
+        }
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+        path.slice{
+	    stroke-width:2px;
+        }
+
+        polyline{
+            opacity: .3;
+            stroke: black;
+            stroke-width: 2px;
+            fill: none;
+        }
+        .pietooltip {
+        background-color: rgba(0,0,0,0.75);
+        padding: 15px;
+        border-radius: 2px;
+        font-family: sans-serif;
+        color: white;
+        pointer-events: none;
+        box-shadow: 0 0 5px #999999;
+        }
+         .sparkline {
+             fill: none;
+             stroke: #000;
+             stroke-width: 0.5px;
+         }
+         .sparkcircle {
+             fill: #f00;
+             stroke: none;
+         }
+        </style>
+</head>
+<body>
+
+    <div class="tab" style="background-color: #990000">
+      <img src="{{ url_for ('static', filename='img/sbuicon.png') }}" width="40" height="40" style="float: left">
+      <button class="tablinks" onclick="openTabClick(event, 'dashboard_container', 1)" id="btn_dashboard">Dashboard</button>
+      <button class="tablinks" onclick="openTabClick(event, 'parallel_container', 5)" id="btn_parallel">Covid-19 India Analysis</button>
+    </div>
+
+    <div class="tabcontent" id="dashboard_container">
+
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="row">
+                    <!-- Confirmed Cases -->
+                    <div class="col-lg-4">
+                        <div class="card card-body" style="border: 3px solid rgba(221, 224, 19, 0.16)">
+                          <h6 class="tx-uppercase tx-11 tx-spacing-1 tx-color-02 tx-semibold mg-b-8">Confirmed </h6>
+                            <div class="row">
+                                <div class="col-lg-6" id="confirmed-cases"></div>
+                                <div class="col-lg-6" id="confirmed-spark"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Deaths -->
+                    <div class="col-lg-4">
+                        <div class="card card-body" style="border: 3px solid rgba(224, 14, 14, 0.16)">
+                          <h6 class="tx-uppercase tx-11 tx-spacing-1 tx-color-02 tx-semibold mg-b-8">Total<span class="d-none d-md-inline"> Deaths</span></h6>
+
+                          <div class="row">
+                              <div class="col-lg-6" id="deaths"></div>
+                              <div class="col-lg-6" id="deaths-spark"></div>
+                          </div>
+                        </div>
+                    </div>
+                    <!-- Recovered Cases -->
+                    <div class="col-lg-4">
+                        <div class="card card-body" style="border: 3px solid rgba(15, 171, 34, 0.16)">
+                          <h6 class="tx-uppercase tx-11 tx-spacing-1 tx-color-02 tx-semibold mg-b-8">Recovered </h6>
+
+                          <div class="row">
+                              <div class="col-lg-6" id="recovered-cases"></div>
+                              <div class="col-lg-6" id="recovered-spark"></div>
+                          </div>
+                        </div>
+                    </div>
+                    <!-- US Map -->
+                    <div class="col-lg-12">
+                        <div class="card card-body">
+                          <h6 class="tx-uppercase tx-11 tx-spacing-1 tx-color-02 tx-semibold mg-b-8">Covid-19 US Map</h6>
+
+                            <div class="chart-stage">
+                                <svg id="uschart2" width="650" height="400"> </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Pie Chart -->
+                    <div class="col-lg-12">
+                    <div class="card card-body">
+                      <h6 class="tx-uppercase tx-11 tx-spacing-1 tx-color-02 tx-semibold mg-b-8">Breakdown of Cases</h6>
+                        <div class="chart-stage" style="height:193px">
+                            <div id="pie-chart"></div>
+                        </div>
+                    </div>
+                  </div>
+
+                </div>
+            </div>
+
+            <!-- Time Series -->
+            <div class="col-lg-6">
+              <div class="card card-body">
+                  <h6 class="tx-uppercase tx-11 tx-spacing-1 tx-color-02 tx-semibold mg-b-8">Time-Series Cases Distribution </h6>
+                        <div id="metric-modal" style="height: 400px"></div>
+                </div>
+            </div>
+            <!-- Radar Chart -->
+            <div class="col-lg-6">
+                <div class="card card-body" id="raderp" style="height: 550px">
+                  <h6 class="tx-uppercase tx-11 tx-spacing-1 tx-color-02 tx-semibold mg-b-8"> Deaths Age/Sex Distribution </h6>
+                  <div id="rader"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+      <div class="tabcontent" id="parallel_container">
+        <div class="row">
+          <div class="col-lg-7">
+            <svg class="parallel_svg" id="parallel" width="1000" height="600"></svg>
+          </div>
+          <div class="col-lg-5">
+            <svg class="parallel_svg1" id="stackedarea" width="500" height="500"></svg>
+          </div>
+        </div>
+      </div>
+
+
+    <script src="http://d3js.org/colorbrewer.v1.min.js"></script>
+    <script src="{{ url_for('static', filename='lib/js/d3.slider.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/js/crossfilter.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/js/queue.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/js/keen.min.js') }}"></script>
+	  <script src="{{ url_for('static', filename='lib/js/legend.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/js/radar.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/js/d3-legend.min.js') }}"></script>
+    <script src="https://d3js.org/topojson.v1.min.js"></script>
+    <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+
+</body>
+</html>
